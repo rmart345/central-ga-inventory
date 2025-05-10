@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Search Inventory</title>
+</head>
+<body>
+    <h1>Search Central GA Inventory</h1>
+
+    <form method="POST" action="/search">
+        <label for="city">Choose a city:</label>
+        <select id="city" name="city" required>
+            {% for city in cities %}
+                <option value="{{ city }}">{{ city.title() }}</option>
+            {% endfor %}
+        </select>
+        <br><br>
+
+        <label for="category">Enter a category (e.g., firewood):</label>
+        <input type="text" id="category" name="category" required>
+        <br><br>
+
+        <label for="item">Enter an item in this category (e.g., oak firewood):</label>
+        <input type="text" id="item" name="item" required>
+        <br><br>
+
+        <button type="submit">Search Inventory</button>
+    </form>
+</body>
+</html>

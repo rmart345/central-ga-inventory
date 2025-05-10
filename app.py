@@ -98,6 +98,29 @@ def generate_ai_intro(city, category):
         logger.error(f"AI intro generation error: {e}")
         return f"Check back soon for more tips about finding {category.replace('-', ' ')} in {city.title()}."
 
+@app.route("/search", methods=["GET", "POST"])
+def search():
+    if request.method == "POST":
+        city = request.form.get("city", "").lower()
+        category = request.form.get("category", "").lower()
+        item = request.form.get("item", "").lower()
+
+        if city not in cities or not category or not item:
+            return render_template("not_found.html", city=city, category=category)
+
+        inventory = get_live_inventory(city, item)
+        intro_text = generate_ai_intro(city, item)
+
+        return render_template(
+            "inventory.html",
+            city=city.title(),
+            category=item.replace("-", " ").title(),
+            inventory=inventory,
+            intro=intro_text
+        )
+
+    return render_template("search.html", cities=cities, categories=categories)
+
 @app.route("/<city>/<category>")
 def show_inventory(city, category):
     city = city.lower()
