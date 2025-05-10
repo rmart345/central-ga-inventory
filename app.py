@@ -1,4 +1,4 @@
-# Central Georgia Inventory Finder (AI-Powered Realtime with Logging)
+# Central Georgia Inventory Finder (AI-Powered Realtime with Logging and Fallback)
 # Flask-based web app with dynamic AI-driven data retrieval for inventory across Central GA
 
 from flask import Flask, render_template, request, jsonify
@@ -19,6 +19,33 @@ logger = logging.getLogger(__name__)
 
 cities = ["macon", "warner-robins", "perry", "milledgeville", "byron"]
 categories = ["firewood", "propane", "cold-medicine", "distilled-water", "ammo"]
+
+# Fallback data if AI fails due to quota or format error
+def fallback_inventory(city, category):
+    now = datetime.now().strftime("%Y-%m-%d %H:%M")
+    return [
+        {
+            "store": "Example Supply Co.",
+            "address": f"123 Main St, {city.title()}, GA",
+            "status": "In Stock",
+            "last_checked": now,
+            "notes": f"Example listing for {category}."
+        },
+        {
+            "store": "Demo Hardware",
+            "address": f"456 Broad Ave, {city.title()}, GA",
+            "status": "Low Stock",
+            "last_checked": now,
+            "notes": "Check in-store availability."
+        },
+        {
+            "store": "Mock Market",
+            "address": f"789 River Rd, {city.title()}, GA",
+            "status": "Out of Stock",
+            "last_checked": now,
+            "notes": "Restocking soon."
+        }
+    ]
 
 # Use GPT to simulate live inventory results dynamically
 def get_live_inventory(city, category):
@@ -50,7 +77,7 @@ def get_live_inventory(city, category):
         return parsed
     except Exception as e:
         logger.error(f"AI inventory fetch error: {e}")
-        return []
+        return fallback_inventory(city, category)
 
 # AI-generated local intro for SEO and user guidance
 def generate_ai_intro(city, category):
@@ -58,7 +85,7 @@ def generate_ai_intro(city, category):
         prompt = f"Write a short and informative paragraph (3-4 sentences) about where to find {category.replace('-', ' ')} in {city.title()}, Georgia, including tips for locals."
         logger.info(f"Sending intro prompt to GPT: {prompt}")
         response = client.chat.completions.create(
-            model="gpt-4",
+            model="gpt-3.5-turbo",
             messages=[
                 {"role": "system", "content": "You are a helpful assistant who writes local shopping advice."},
                 {"role": "user", "content": prompt}
