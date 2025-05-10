@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html>
+<head><title>{{ category }} in {{ city }}</title></head>
+<body>
+<h1>{{ category }} in {{ city }}</h1>
+<p>{{ intro }}</p>
+{% for item in inventory %}
+    <div>
+        <h3>{{ item.store }}</h3>
+        <p>{{ item.address }}<br>Status: {{ item.status }}<br>Last Checked: {{ item.last_checked }}<br>Notes: {{ item.notes }}</p>
+    </div>
+{% endfor %}
+<a href="/">Back to Home</a>
+</body>
+</html>

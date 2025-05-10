@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+<head><title>Inventory Finder</title></head>
+<body>
+<h1>Find Products Near You</h1>
+<ul>
+{% for city in cities %}
+    <li>{{ city.title() }}
+        <ul>
+        {% for category in categories %}
+            <li><a href="/{{ city }}/{{ category }}">{{ category.replace("-", " ").title() }}</a></li>
+        {% endfor %}
+        </ul>
+    </li>
+{% endfor %}
+</ul>
+</body>
+</html>
