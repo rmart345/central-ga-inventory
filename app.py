@@ -5,6 +5,7 @@ from flask import Flask, render_template, request, jsonify
 from datetime import datetime
 import openai
 import os
+import json
 
 app = Flask(__name__)
 
@@ -18,15 +19,25 @@ categories = ["firewood", "propane", "cold-medicine", "distilled-water", "ammo"]
 def get_live_inventory(city, category):
     now = datetime.now().strftime("%Y-%m-%d %H:%M")
     try:
-        prompt = f"List 3 stores in {city.title()}, Georgia that currently sell {category.replace('-', ' ')}. For each store, give the name, address, current stock status (In Stock, Low Stock, or Out of Stock), and a useful note for the shopper. Format your response as JSON list of objects."
+        prompt = (
+            f"Return only a valid JSON array. List 3 stores in {city.title()}, Georgia that currently sell {category.replace('-', ' ')}. "
+            f"Each object should include: 'store', 'address', 'status' (In Stock, Low Stock, Out of Stock), and 'notes'."
+        )
         response = openai.ChatCompletion.create(
             model="gpt-4",
             messages=[
-                {"role": "system", "content": "You are a helpful assistant that returns clean JSON lists of local retail inventory."},
+                {"role": "system", "content": "You are a helpful assistant that returns clean JSON arrays for local retail inventory."},
                 {"role": "user", "content": prompt}
             ]
         )
-        parsed = eval(response.choices[0].message.content)  # assumes well-formed output from GPT
+        raw_content = response.choices[0].message.content.strip()
+
+        # Parse JSON safely
+        start_idx = raw_content.find('[')
+        end_idx = raw_content.rfind(']') + 1
+        json_data = raw_content[start_idx:end_idx]
+        parsed = json.loads(json_data)
+
         for item in parsed:
             item["last_checked"] = now
         return parsed
@@ -73,3 +84,4 @@ def home():
 
 if __name__ == "__main__":
     app.run(debug=True)
+
