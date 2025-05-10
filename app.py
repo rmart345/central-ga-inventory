@@ -28,6 +28,10 @@ item_options = {
     "ammo": ["9mm rounds", "12 gauge shells", ".223 Remington"]
 }
 
+@app.route("/")
+def home():
+    return render_template("search.html", cities=cities)
+
 @app.route("/get_items", methods=["POST"])
 def get_items():
     try:
