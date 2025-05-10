@@ -6,7 +6,7 @@ from datetime import datetime
 import openai  # Add OpenAI for content generation
 import os
 
-app = Flask(__name__)
+app = Flask(__name__, template_folder="templates")
 
 # Load API key from environment or config
 openai.api_key = os.getenv("OPENAI_API_KEY")
