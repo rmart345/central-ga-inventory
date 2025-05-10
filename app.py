@@ -59,8 +59,8 @@ def get_live_inventory(city, category):
     now = datetime.now().strftime("%Y-%m-%d %H:%M")
     try:
         prompt = (
-            f"Return only a valid JSON array. List 3 stores in {city.title()}, Georgia that currently sell {category.replace('-', ' ')}. "
-            f"Each object should include: 'store', 'address', 'status' (In Stock, Low Stock, Out of Stock), and 'notes'."
+        f"Return only a valid JSON array. List all stores in {city.title()}, Georgia that currently carry the item '{category.replace('-', ' ')}'. "
+        f"Each object should include: 'store', 'address', 'price', 'quantity', and 'notes'."
         )
         logger.info(f"Sending prompt to GPT: {prompt}")
         response = client.chat.completions.create(
@@ -80,6 +80,8 @@ def get_live_inventory(city, category):
 
         for item in parsed:
             item["last_checked"] = now
+            item.setdefault("price", "Unknown")
+            item.setdefault("quantity", "Unknown")
         return parsed
     except Exception as e:
         logger.error(f"AI inventory fetch error: {e}")
