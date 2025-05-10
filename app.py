@@ -32,6 +32,29 @@ item_options = {
 def home():
     return render_template("search.html", cities=cities)
 
+@app.route("/search", methods=["GET", "POST"])
+def search():
+    if request.method == "POST":
+        city = request.form.get("city", "").lower()
+        category = request.form.get("category", "").lower()
+        item = request.form.get("item", "").lower()
+
+        if city not in cities or not category or not item:
+            return render_template("not_found.html", city=city, category=category)
+
+        inventory = get_live_inventory(city, item)
+        intro_text = generate_ai_intro(city, item)
+
+        return render_template(
+            "inventory.html",
+            city=city.title(),
+            category=item.replace("-", " ").title(),
+            inventory=inventory,
+            intro=intro_text
+        )
+
+    return render_template("search.html", cities=cities)
+
 @app.route("/get_items", methods=["POST"])
 def get_items():
     try:
