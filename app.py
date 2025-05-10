@@ -1,50 +1,47 @@
-# Central Georgia Inventory Finder (MVP Scaffold)
-# Flask-based web app to display localized inventory across Central GA
+# Central Georgia Inventory Finder (Live Version)
+# Flask-based web app to display localized inventory across Central GA with real-time scraping
 
 from flask import Flask, render_template, request, jsonify
 from datetime import datetime
-import openai  # Add OpenAI for content generation
+import openai
 import os
+import requests
+from bs4 import BeautifulSoup
 
-app = Flask(__name__, template_folder="templates")
+app = Flask(__name__)
 
-# Load API key from environment or config
+# Load API key from environment
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
-# Sample city/category database (could be expanded to a real DB later)
 cities = ["macon", "warner-robins", "perry", "milledgeville", "byron"]
 categories = ["firewood", "propane", "cold-medicine", "distilled-water", "ammo"]
 
-# Sample static inventory data (to be replaced by AI-powered scraper)
-inventory_data = {
-    ("macon", "firewood"): [
-        {
-            "store": "Tractor Supply Co.",
-            "address": "123 Gray Hwy, Macon, GA",
-            "status": "In Stock",
-            "last_checked": "2025-05-10 14:00",
-            "notes": "Pickup only"
-        },
-        {
-            "store": "Ace Hardware",
-            "address": "456 Vineville Ave, Macon, GA",
-            "status": "Low Stock",
-            "last_checked": "2025-05-10 13:30",
-            "notes": "Delivery available"
-        }
-    ],
-    ("warner-robins", "propane"): [
-        {
-            "store": "U-Haul Neighborhood Dealer",
-            "address": "789 Watson Blvd, Warner Robins, GA",
-            "status": "In Stock",
-            "last_checked": "2025-05-10 11:15",
-            "notes": "Tank exchange only"
-        }
-    ]
-}
+# Real-time scraping function (placeholder logic)
+def get_live_inventory(city, category):
+    listings = []
+    now = datetime.now().strftime("%Y-%m-%d %H:%M")
 
-# AI content generation for SEO and user context
+    # Example: scrape from a simulated local store (replace with real URLs)
+    if city == "macon" and category == "firewood":
+        try:
+            response = requests.get("https://example.com/stores/macon/firewood")  # Replace with real endpoint
+            soup = BeautifulSoup(response.text, 'html.parser')
+            items = soup.select(".inventory-item")
+            for item in items:
+                listings.append({
+                    "store": item.select_one(".store-name").text,
+                    "address": item.select_one(".store-address").text,
+                    "status": item.select_one(".stock-status").text,
+                    "last_checked": now,
+                    "notes": item.select_one(".notes").text
+                })
+        except Exception as e:
+            print(f"Scraping error: {e}")
+
+    return listings
+
+# AI-generated local intro for SEO
+
 def generate_ai_intro(city, category):
     try:
         prompt = f"Write a short and informative paragraph (3-4 sentences) about where to find {category.replace('-', ' ')} in {city.title()}, Georgia, including tips for locals."
@@ -67,7 +64,7 @@ def show_inventory(city, category):
     if city not in cities or category not in categories:
         return render_template("not_found.html", city=city, category=category)
 
-    inventory = inventory_data.get((city, category), [])
+    inventory = get_live_inventory(city, category)
     intro_text = generate_ai_intro(city, category)
     return render_template(
         "inventory.html",
