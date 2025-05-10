@@ -3,12 +3,66 @@
 <head>
     <meta charset="UTF-8">
     <title>Search Inventory</title>
+    <script>
+        let debounceTimer;
+
+        function debounceFetchItems() {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(fetchItems, 500);
+        }
+
+        async function fetchItems() {
+            const categoryInput = document.getElementById("category").value;
+            const itemSelect = document.getElementById("item");
+            const loader = document.getElementById("loader");
+
+            if (!categoryInput) return;
+
+            loader.style.display = "inline";
+
+            try {
+                const response = await fetch("/get_items", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ category: categoryInput })
+                });
+
+                loader.style.display = "none";
+                itemSelect.innerHTML = ""; // Clear previous
+
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.items && data.items.length > 0) {
+                        data.items.forEach(option => {
+                            const el = document.createElement("option");
+                            el.value = option;
+                            el.textContent = option;
+                            itemSelect.appendChild(el);
+                        });
+                    } else {
+                        const el = document.createElement("option");
+                        el.textContent = "No items found.";
+                        itemSelect.appendChild(el);
+                    }
+                } else {
+                    const el = document.createElement("option");
+                    el.textContent = "Error loading items.";
+                    itemSelect.appendChild(el);
+                }
+            } catch (err) {
+                loader.style.display = "none";
+                const el = document.createElement("option");
+                el.textContent = "Network error.";
+                itemSelect.appendChild(el);
+            }
+        }
+    </script>
 </head>
 <body>
-    <h1>Search Central GA Inventory</h1>
+    <h1>Search Inventory</h1>
 
     <form method="POST" action="/search">
-        <label for="city">Choose a city:</label>
+        <label for="city">City:</label>
         <select id="city" name="city" required>
             {% for city in cities %}
                 <option value="{{ city }}">{{ city.title() }}</option>
@@ -16,15 +70,18 @@
         </select>
         <br><br>
 
-        <label for="category">Enter a category (e.g., firewood):</label>
-        <input type="text" id="category" name="category" required>
+        <label for="category">Enter Category (e.g., Guns, Firewood):</label>
+        <input type="text" id="category" name="category" required oninput="debounceFetchItems()">
+        <span id="loader" style="display:none;">⏳</span>
         <br><br>
 
-        <label for="item">Enter an item in this category (e.g., oak firewood):</label>
-        <input type="text" id="item" name="item" required>
+        <label for="item">Select an Item:</label>
+        <select id="item" name="item" required>
+            <option value="">(Select or wait for suggestions...)</option>
+        </select>
         <br><br>
 
-        <button type="submit">Search Inventory</button>
+        <button type="submit">Find Inventory</button>
     </form>
 </body>
 </html>
