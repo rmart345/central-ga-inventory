@@ -121,6 +121,8 @@ def generate_ai_intro(city, category):
         return f"Check back soon for more tips about finding {category.replace('-', ' ')} in {city.title()}."
 
 def verify_store_exists(store_name, city):
+
+
     api_key = os.getenv("GOOGLE_PLACES_API_KEY")
     base_url = "https://maps.googleapis.com/maps/api/place/textsearch/json"
     query = f"{store_name} {city}, Georgia"
@@ -128,6 +130,8 @@ def verify_store_exists(store_name, city):
 
     try:
         response = requests.get(base_url, params=params)
+	logger.debug(f"Verifying store: {store_name} in {city}")
+	logger.debug(f"Google Places API response: {response.json()}")
         results = response.json().get("results", [])
         for result in results:
             if result.get("business_status") in [None, "OPERATIONAL"]:
@@ -158,7 +162,7 @@ def get_live_inventory(city, category):
         end_idx = raw_content.rfind(']') + 1
         json_data = raw_content[start_idx:end_idx]
         parsed = json.loads(json_data)
-
+        logger.debug(f"GPT returned stores: {json.dumps(parsed, indent=2)}")
         verified = []
         for store in parsed:
             if verify_store_exists(store["store"], city):
