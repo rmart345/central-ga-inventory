@@ -20,7 +20,12 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {% for item in inventory %}
                         <div class="border border-gray-200 rounded-lg shadow p-4 hover:shadow-lg transition">
-                            <h2 class="text-lg font-bold text-blue-800">{{ item.store }}</h2>
+                            <h2 class="text-lg font-bold text-blue-800">
+                                <a href="https://www.google.com/search?q={{ item.store | urlencode }}+{{ city | urlencode }}+GA"
+                                   target="_blank" class="hover:underline text-blue-700">
+                                    {{ item.store }}
+                                </a>
+                            </h2>
                             <p class="text-sm text-gray-700">{{ item.address }}</p>
 
                             <div class="mt-2 text-sm">
