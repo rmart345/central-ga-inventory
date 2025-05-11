@@ -56,10 +56,15 @@ def search():
     return render_template("search.html", cities=cities)
 
 def get_live_inventory(city, category):
+    # Future enhancement: Use Google Places or Yelp API here to collect real store data with ratings and review summaries.
+    """
+    This function should be extended to use a real store location or product API (e.g., Google Places, Walmart API).
+    GPT will only be used to sort, evaluate, and generate quality analysis based on fetched data.
+    """
     now = datetime.now().strftime("%Y-%m-%d %H:%M")
     try:
         prompt = (
-        f"Return only a valid JSON array. List all stores in {city.title()}, Georgia that currently carry the item '{category.replace('-', ' ')}'. "
+        f"Return only a valid JSON array. List at least 15 real stores in {city.title()}, Georgia that currently carry the item '{category.replace('-', ' ')}'. "
         f"Each object should include: 'store', 'address', 'price', 'quantity', and 'notes'."
         )
         logger.info(f"Sending prompt to GPT: {prompt}")
@@ -78,10 +83,43 @@ def get_live_inventory(city, category):
         json_data = raw_content[start_idx:end_idx]
         parsed = json.loads(json_data)
 
+        # 🔍 Optionally analyze quality of service using GPT
+        try:
+            quality_prompt = (
+                "Given this list of stores with price and quantity, evaluate their quality of service based on names and notes. "
+                "Assign a 'quality' label (Excellent, Good, Fair, Poor) to each store. Return a JSON array with an added 'quality' field per store.\n"
+                f"Here is the data: {json.dumps(parsed)}"
+            )
+            quality_response = client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[
+                    {"role": "system", "content": "You are an assistant that evaluates customer service based on store info."},
+                    {"role": "user", "content": quality_prompt}
+                ]
+            )
+            quality_data = quality_response.choices[0].message.content.strip()
+            parsed = json.loads(quality_data)
+        except Exception as qerr:
+            logger.warning(f"Could not enrich with quality labels: {qerr}")
+            for item in parsed:
+                item.setdefault("quality", "Unknown")
+
         for item in parsed:
             item["last_checked"] = now
-            item.setdefault("price", "Unknown")
-            item.setdefault("quantity", "Unknown")
+            if "price" not in item or not item["price"]:
+                item["price"] = "Unknown"
+            if "quantity" not in item or not item["quantity"]:
+                item["quantity"] = "Unknown"
+
+        # Optional: sort by price if possible
+        def extract_price(it):
+            try:
+                return float(str(it["price"]).replace("$", "").replace(",", ""))
+            except:
+                return float('inf')
+
+        parsed.sort(key=extract_price)
+
         return parsed
     except Exception as e:
         logger.error(f"AI inventory fetch error: {e}")
@@ -89,7 +127,8 @@ def get_live_inventory(city, category):
             {
                 "store": "Example Supply Co.",
                 "address": f"123 Main St, {city.title()}, GA",
-                "status": "In Stock",
+                "price": "Unknown",
+                "quantity": "Unknown",
                 "last_checked": now,
                 "notes": f"Example listing for {category}."
             }
