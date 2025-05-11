@@ -64,7 +64,7 @@
                 body: JSON.stringify({ category: categoryInput })
             });
 
-            itemSelect.innerHTML = "";
+            itemSelect.innerHTML = "<option>Loading...</option>";
 
             if (response.ok) {
                 const data = await response.json();
