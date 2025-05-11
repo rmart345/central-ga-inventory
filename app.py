@@ -130,8 +130,8 @@ def verify_store_exists(store_name, city):
 
     try:
         response = requests.get(base_url, params=params)
-	logger.debug(f"Verifying store: {store_name} in {city}")
-	logger.debug(f"Google Places API response: {response.json()}")
+        logger.debug(f"Verifying store: {store_name} in {city}")
+        logger.debug(f"Google Places API response: {response.json()}")
         results = response.json().get("results", [])
         for result in results:
             if result.get("business_status") in [None, "OPERATIONAL"]:
