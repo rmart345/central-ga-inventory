@@ -18,6 +18,7 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 cities = ["macon", "warner-robins", "perry", "milledgeville", "byron"]
 categories = ["firewood", "propane", "cold-medicine", "distilled-water", "ammo"]
