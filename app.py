@@ -8,6 +8,7 @@ import json
 import logging
 import requests
 from openai import OpenAI
+from functools import lru_cache
 
 app = Flask(__name__)
 
@@ -57,21 +58,56 @@ def search():
 
     return render_template("search.html", cities=cities)
 
-def verify_store_exists(store_name, city):
+@app.route("/test_places_api")
+def test_places_api():
     api_key = os.getenv("GOOGLE_PLACES_API_KEY")
     base_url = "https://maps.googleapis.com/maps/api/place/textsearch/json"
-
-    query = f"{store_name} {city}, Georgia"
     params = {
-        "query": query,
+        "query": "Walmart in Macon, Georgia",
         "key": api_key
     }
 
     try:
         response = requests.get(base_url, params=params)
+        data = response.json()
+        return jsonify({
+            "status": data.get("status"),
+            "results_found": len(data.get("results", [])),
+            "first_result": data.get("results", [])[0] if data.get("results") else None
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)})
+
+@lru_cache(maxsize=100)
+def generate_ai_intro(city, category):
+    try:
+        prompt = f"Write a short and informative paragraph (3-4 sentences) about where to find {category.replace('-', ' ')} in {city.title()}, Georgia, including tips for locals."
+        logger.info(f"Sending intro prompt to GPT: {prompt}")
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "You are a helpful assistant who writes local shopping advice."},
+                {"role": "user", "content": prompt}
+            ]
+        )
+        intro = response.choices[0].message.content.strip()
+        logger.info(f"Received intro text: {intro}")
+        return intro
+    except Exception as e:
+        logger.error(f"AI intro generation error: {e}")
+        return f"Check back soon for more tips about finding {category.replace('-', ' ')} in {city.title()}."
+
+def verify_store_exists(store_name, city):
+    api_key = os.getenv("GOOGLE_PLACES_API_KEY")
+    base_url = "https://maps.googleapis.com/maps/api/place/textsearch/json"
+    query = f"{store_name} {city}, Georgia"
+    params = {"query": query, "key": api_key, "fields": "business_status"}
+
+    try:
+        response = requests.get(base_url, params=params)
         results = response.json().get("results", [])
         for result in results:
-            if result.get("business_status") == "OPERATIONAL":
+            if result.get("business_status") in [None, "OPERATIONAL"]:
                 return True
         return False
     except Exception as e:
@@ -109,7 +145,6 @@ def get_live_inventory(city, category):
         if not verified:
             raise Exception("No verified stores found.")
 
-        # Enrich with quality
         quality_prompt = (
             "Given this list of stores, evaluate their quality of service based on names and notes. "
             "Assign a 'quality' label (Excellent, Good, Fair, Poor) to each store. Return a JSON array with an added 'quality' field per store.\n"
@@ -154,24 +189,6 @@ def get_live_inventory(city, category):
                 "quality": "Unknown"
             }
         ]
-
-def generate_ai_intro(city, category):
-    try:
-        prompt = f"Write a short and informative paragraph (3-4 sentences) about where to find {category.replace('-', ' ')} in {city.title()}, Georgia, including tips for locals."
-        logger.info(f"Sending intro prompt to GPT: {prompt}")
-        response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": "You are a helpful assistant who writes local shopping advice."},
-                {"role": "user", "content": prompt}
-            ]
-        )
-        intro = response.choices[0].message.content.strip()
-        logger.info(f"Received intro text: {intro}")
-        return intro
-    except Exception as e:
-        logger.error(f"AI intro generation error: {e}")
-        return f"Check back soon for more tips about finding {category.replace('-', ' ')} in {city.title()}."
 
 @app.route("/get_items", methods=["POST"])
 def get_items():
