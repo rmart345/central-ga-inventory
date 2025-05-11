@@ -30,7 +30,7 @@ item_options = {
 
 @app.route("/")
 def home():
-    return render_template("search.html", cities=cities)
+    return render_template("search.html", cities=cities, year=datetime.now().year)
 
 @app.route("/search", methods=["GET", "POST"])
 def search():
@@ -40,13 +40,14 @@ def search():
         item = request.form.get("item", "").lower()
 
         if city not in cities or not category or not item:
-            return render_template("not_found.html", city=city, category=category)
+            return render_template("not_found.html", city=city, category=category, year=datetime.now().year)
 
         inventory = get_live_inventory(city, item)
         intro_text = generate_ai_intro(city, item)
 
         return render_template(
-            "inventory.html",
+        "inventory.html",
+        year=datetime.now().year,
             city=city.title(),
             category=item.replace("-", " ").title(),
             inventory=inventory,
