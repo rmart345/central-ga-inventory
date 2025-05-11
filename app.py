@@ -16,9 +16,8 @@ app = Flask(__name__)
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 # Set up logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
 
 cities = ["macon", "warner-robins", "perry", "milledgeville", "byron"]
 categories = ["firewood", "propane", "cold-medicine", "distilled-water", "ammo"]
@@ -125,7 +124,7 @@ def verify_store_exists(store_name, city):
     api_key = os.getenv("GOOGLE_PLACES_API_KEY")
     base_url = "https://maps.googleapis.com/maps/api/place/textsearch/json"
     query = f"{store_name} {city}, Georgia"
-    params = {"query": query, "key": api_key}
+    params = {"query": query, "key": api_key, "fields": "business_status"}
 
     try:
         response = requests.get(base_url, params=params)
@@ -162,6 +161,7 @@ def get_live_inventory(city, category):
         json_data = raw_content[start_idx:end_idx]
         parsed = json.loads(json_data)
         logger.debug(f"GPT returned stores: {json.dumps(parsed, indent=2)}")
+
         verified = []
         for store in parsed:
             if verify_store_exists(store["store"], city):
@@ -172,7 +172,7 @@ def get_live_inventory(city, category):
             raise Exception("No verified stores found.")
 
         quality_prompt = (
-            "Given this list of stores, evaluate their quality of service based on names and notes. "
+            "Respond only with a clean JSON array. Given this list of stores, evaluate their quality of service based on names and notes. "
             "Assign a 'quality' label (Excellent, Good, Fair, Poor) to each store. Return a JSON array with an added 'quality' field per store.\n"
             f"Here is the data: {json.dumps(verified)}"
         )
@@ -184,7 +184,15 @@ def get_live_inventory(city, category):
             ]
         )
         quality_data = quality_response.choices[0].message.content.strip()
-        enriched = json.loads(quality_data)
+        start_q = quality_data.find('[')
+        end_q = quality_data.rfind(']') + 1
+        json_fragment = quality_data[start_q:end_q]
+
+        try:
+            enriched = json.loads(json_fragment)
+        except Exception as e:
+            logger.error(f"Failed to parse GPT quality data: {e}")
+            raise Exception("AI returned invalid JSON when assigning quality labels.")
 
         def extract_price(it):
             try:
