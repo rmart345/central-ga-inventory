@@ -57,48 +57,64 @@ def search():
 
     return render_template("search.html", cities=cities)
 
-def fetch_verified_stores(city, item, radius=10000):
+def verify_store_exists(store_name, city):
     api_key = os.getenv("GOOGLE_PLACES_API_KEY")
     base_url = "https://maps.googleapis.com/maps/api/place/textsearch/json"
 
-    query = f"{item} in {city}, Georgia"
+    query = f"{store_name} {city}, Georgia"
     params = {
         "query": query,
-        "radius": radius,
         "key": api_key
     }
 
-    response = requests.get(base_url, params=params)
-    data = response.json()
-    results = []
-
-    for place in data.get("results", []):
-        if place.get("business_status") == "OPERATIONAL":
-            results.append({
-                "store": place.get("name"),
-                "address": place.get("formatted_address"),
-                "price": "Unknown",
-                "quantity": "Unknown",
-                "notes": ", ".join(place.get("types", [])),
-                "last_checked": datetime.now().strftime("%Y-%m-%d %H:%M"),
-                "quality": "Unknown"
-            })
-
-    return results
+    try:
+        response = requests.get(base_url, params=params)
+        results = response.json().get("results", [])
+        for result in results:
+            if result.get("business_status") == "OPERATIONAL":
+                return True
+        return False
+    except Exception as e:
+        logger.warning(f"Store verification failed for {store_name}: {e}")
+        return False
 
 def get_live_inventory(city, category):
     now = datetime.now().strftime("%Y-%m-%d %H:%M")
     try:
-        verified_stores = fetch_verified_stores(city, category)
-        if not verified_stores:
-            raise Exception("No verified store data returned.")
+        prompt = (
+            f"Return only a valid JSON array. List at least 10 stores in {city.title()}, Georgia that currently carry the item '{category.replace('-', ' ')}'. "
+            f"Each object should include: 'store', 'address', 'price', 'quantity', and 'notes'."
+        )
+        logger.info(f"Sending prompt to GPT: {prompt}")
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "You are a helpful assistant that returns clean JSON arrays for local retail inventory."},
+                {"role": "user", "content": prompt}
+            ]
+        )
 
+        raw_content = response.choices[0].message.content.strip()
+        start_idx = raw_content.find('[')
+        end_idx = raw_content.rfind(']') + 1
+        json_data = raw_content[start_idx:end_idx]
+        parsed = json.loads(json_data)
+
+        verified = []
+        for store in parsed:
+            if verify_store_exists(store["store"], city):
+                store["last_checked"] = now
+                verified.append(store)
+
+        if not verified:
+            raise Exception("No verified stores found.")
+
+        # Enrich with quality
         quality_prompt = (
             "Given this list of stores, evaluate their quality of service based on names and notes. "
             "Assign a 'quality' label (Excellent, Good, Fair, Poor) to each store. Return a JSON array with an added 'quality' field per store.\n"
-            f"Here is the data: {json.dumps(verified_stores)}"
+            f"Here is the data: {json.dumps(verified)}"
         )
-
         quality_response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
@@ -107,7 +123,7 @@ def get_live_inventory(city, category):
             ]
         )
         quality_data = quality_response.choices[0].message.content.strip()
-        parsed = json.loads(quality_data)
+        enriched = json.loads(quality_data)
 
         def extract_price(it):
             try:
@@ -115,15 +131,15 @@ def get_live_inventory(city, category):
             except:
                 return float('inf')
 
-        for item in parsed:
+        for item in enriched:
             if isinstance(item.get("price"), str) and item["price"].startswith("$"):
                 try:
                     item["price"] = float(item["price"].replace("$", "").replace(",", ""))
                 except:
                     item["price"] = "Unknown"
 
-        parsed.sort(key=extract_price)
-        return parsed
+        enriched.sort(key=extract_price)
+        return enriched
 
     except Exception as e:
         logger.error(f"Inventory fetch failed: {e}")
