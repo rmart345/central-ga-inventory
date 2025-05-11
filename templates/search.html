@@ -27,11 +27,12 @@
                         class="w-full border border-gray-300 rounded-md px-3 py-2" placeholder="e.g. Tires, Firewood, Guns">
                 </div>
 
-                <div>
+                <div class="relative">
                     <label for="item" class="block text-left text-sm font-medium text-gray-700">Item</label>
-                    <select id="item" name="item" required class="w-full border border-gray-300 rounded-md px-3 py-2">
-                        <option value="">Select a category first...</option>
-                    </select>
+                    <input type="text" id="item" name="item" required autocomplete="off"
+                        class="w-full border border-gray-300 rounded-md px-3 py-2"
+                        placeholder="Start typing item name...">
+                    <ul id="suggestions" class="absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-md shadow text-left hidden max-h-48 overflow-y-auto"></ul>
                 </div>
 
                 <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md w-full">
@@ -49,43 +50,53 @@
         let debounceTimer;
         function debounceFetchItems() {
             clearTimeout(debounceTimer);
-            debounceTimer = setTimeout(fetchItems, 500);
+            debounceTimer = setTimeout(fetchItemSuggestions, 300);
         }
 
-        async function fetchItems() {
-            const categoryInput = document.getElementById("category").value;
-            const itemSelect = document.getElementById("item");
+        async function fetchItemSuggestions() {
+            const category = document.getElementById("category").value;
+            const input = document.getElementById("item");
+            const list = document.getElementById("suggestions");
 
-            if (!categoryInput) return;
+            if (!category || input.value.length < 1) {
+                list.classList.add("hidden");
+                return;
+            }
 
             const response = await fetch("/get_items", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ category: categoryInput })
+                body: JSON.stringify({ category })
             });
 
-            itemSelect.innerHTML = "<option>Loading...</option>";
-
+            list.innerHTML = "";
             if (response.ok) {
                 const data = await response.json();
                 if (data.items && data.items.length > 0) {
-                    data.items.forEach(option => {
-                        const el = document.createElement("option");
-                        el.value = option;
-                        el.textContent = option;
-                        itemSelect.appendChild(el);
+                    data.items.forEach(item => {
+                        const li = document.createElement("li");
+                        li.textContent = item;
+                        li.className = "px-3 py-2 hover:bg-gray-100 cursor-pointer";
+                        li.onclick = () => {
+                            input.value = item;
+                            list.classList.add("hidden");
+                        };
+                        list.appendChild(li);
                     });
+                    list.classList.remove("hidden");
                 } else {
-                    const el = document.createElement("option");
-                    el.textContent = "No items found.";
-                    itemSelect.appendChild(el);
+                    list.classList.add("hidden");
                 }
             } else {
-                const el = document.createElement("option");
-                el.textContent = "Error loading items.";
-                itemSelect.appendChild(el);
+                list.classList.add("hidden");
             }
         }
+
+        document.addEventListener("click", function (e) {
+            if (!document.getElementById("suggestions").contains(e.target)) {
+                document.getElementById("suggestions").classList.add("hidden");
+            }
+        });
     </script>
 </body>
 </html>

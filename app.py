@@ -58,6 +58,29 @@ def search():
 
     return render_template("search.html", cities=cities)
 
+@app.route("/classify_type", methods=["POST"])
+def classify_type():
+    try:
+        data = request.get_json()
+        user_input = data.get("text", "").strip()
+        if not user_input:
+            return jsonify({"error": "Missing input text."}), 400
+
+        prompt = f"What kind of store typically sells this: '{user_input}'? Respond with just one or two words like 'pharmacy', 'grocery store', 'hardware store', or 'automotive'."
+        logger.info(f"Classifying type for: {user_input}")
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "You are a helpful assistant that classifies items by store type."},
+                {"role": "user", "content": prompt}
+            ]
+        )
+        result = response.choices[0].message.content.strip()
+        return jsonify({"store_type": result})
+    except Exception as e:
+        logger.error(f"Classification failed: {e}")
+        return jsonify({"error": "Unable to classify store type."}), 500
+
 @app.route("/test_places_api")
 def test_places_api():
     api_key = os.getenv("GOOGLE_PLACES_API_KEY")
