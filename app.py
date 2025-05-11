@@ -121,12 +121,10 @@ def generate_ai_intro(city, category):
         return f"Check back soon for more tips about finding {category.replace('-', ' ')} in {city.title()}."
 
 def verify_store_exists(store_name, city):
-
-
     api_key = os.getenv("GOOGLE_PLACES_API_KEY")
     base_url = "https://maps.googleapis.com/maps/api/place/textsearch/json"
     query = f"{store_name} {city}, Georgia"
-    params = {"query": query, "key": api_key, "fields": "business_status"}
+    params = {"query": query, "key": api_key}
 
     try:
         response = requests.get(base_url, params=params)
